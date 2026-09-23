@@ -1,13 +1,6 @@
 package com.app.a3dmodelviewer.glb
 
-/**
- * Parsed metadata for a glTF node that contains an `extras.prop` label.
- *
- * @property nodeIndex Index of the node in the glTF "nodes" array.
- * @property nodeName Name of the node in the glTF hierarchy (e.g. "Empty.004").
- * @property labelText Extracted label string from `node.extras.prop`.
- * @property localTranslation Optional local translation vector [x, y, z] from the glTF node definition.
- */
+
 data class GlbNodeMetadata(
     val nodeIndex: Int,
     val nodeName: String,

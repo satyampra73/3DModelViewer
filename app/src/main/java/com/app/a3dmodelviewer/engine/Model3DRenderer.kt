@@ -27,9 +27,6 @@ import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.sin
 
-/**
- * Manages Filament 3D rendering onto a [TextureView] and drives dynamic 3D-to-2D label projection.
- */
 class Model3DRenderer(
     private val context: Context,
     private val textureView: TextureView,
@@ -180,9 +177,6 @@ class Model3DRenderer(
         lightEntities.add(rimLight)
     }
 
-    /**
-     * Loads a GLB file from assets, extracts its labels, and maps nodes to Filament entities.
-     */
     fun loadGlbFromAssets(assetPath: String) {
         if (isDestroyed) return
 
@@ -249,9 +243,7 @@ class Model3DRenderer(
         requestRender(DEFAULT_SETTLE_FRAMES)
     }
 
-    /**
-     * Orbits the 3D camera around the model's visual center by [deltaX] and [deltaY] pixel movements.
-     */
+
     fun rotateBy(deltaX: Float, deltaY: Float) {
         val sensitivity = 0.005f
         azimuth -= deltaX * sensitivity
@@ -264,11 +256,6 @@ class Model3DRenderer(
         requestRender(DEFAULT_SETTLE_FRAMES)
     }
 
-    /**
-     * Zooms the 3D camera relative to the model's visual center using pinch [scaleFactor].
-     * Pinch outward (scaleFactor > 1) -> distance decreases -> zoom in.
-     * Pinch inward (scaleFactor < 1) -> distance increases -> zoom out.
-     */
     fun zoomBy(scaleFactor: Float) {
         if (scaleFactor <= 0f) return
         cameraDistance = (cameraDistance / scaleFactor).coerceIn(minDistance, maxDistance)
@@ -304,10 +291,7 @@ class Model3DRenderer(
         )
     }
 
-    /**
-     * Projects tracked 3D entities to 2D screen coordinates and updates the [LabelOverlayView].
-     * Skips matrix computations completely when labels are hidden to conserve CPU/GPU cycles.
-     */
+
     private fun updateLabelsProjection() {
         val overlay = labelOverlayView ?: return
         if (!overlay.isLabelsVisible || trackedLabels.isEmpty() || surfaceWidth <= 0 || surfaceHeight <= 0) return
@@ -381,11 +365,6 @@ class Model3DRenderer(
         // No-op
     }
 
-    // --- Render Loop Control ---
-
-    /**
-     * Schedules [frames] render cycles to process scene/camera changes and settle front/back buffers.
-     */
     fun requestRender(frames: Int = DEFAULT_SETTLE_FRAMES) {
         if (isDestroyed || swapChain == null) return
         dirtyFrames = maxOf(dirtyFrames, frames)

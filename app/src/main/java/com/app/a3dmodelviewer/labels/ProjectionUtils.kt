@@ -1,23 +1,8 @@
 package com.app.a3dmodelviewer.labels
 
-/**
- * High-performance, allocation-free utility for 3D world-to-2D screen coordinate projection.
- */
+
 object ProjectionUtils {
 
-    /**
-     * Projects a 3D world position [x, y, z] to 2D screen coordinates [screenX, screenY].
-     *
-     * @param worldX World X coordinate.
-     * @param worldY World Y coordinate.
-     * @param worldZ World Z coordinate.
-     * @param viewMatrix 4x4 column-major view matrix from Filament Camera (float[16]).
-     * @param projMatrix 4x4 column-major projection matrix from Filament Camera (double[16]).
-     * @param viewportWidth Width of the rendering viewport in pixels.
-     * @param viewportHeight Height of the rendering viewport in pixels.
-     * @param outScreenPos Reusable 2-element FloatArray to receive [screenX, screenY].
-     * @return true if the point is in front of the camera and within visible bounds, false if culled.
-     */
     fun project(
         worldX: Float,
         worldY: Float,

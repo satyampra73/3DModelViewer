@@ -9,12 +9,6 @@ import android.graphics.Typeface
 import android.util.AttributeSet
 import android.view.View
 
-/**
- * High-performance 2D Canvas overlay for rendering part labels and connector lines.
- *
- * All [Paint], [RectF], and [Rect] objects are pre-allocated at initialization
- * to guarantee zero allocations inside [onDraw].
- */
 class LabelOverlayView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

@@ -19,10 +19,6 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import kotlin.math.hypot
 
-/**
- * Independent, draggable, and resizable container hosting a 3D model, its 2D label overlay,
- * and header controls (Mode Toggle, Label Toggle, Close).
- */
 class ModelContainerView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -184,9 +180,7 @@ class ModelContainerView @JvmOverloads constructor(
         }
     }
 
-    /**
-     * Initializes Filament 3D rendering for this container with the given GLB model.
-     */
+
     fun loadModel(glbAssetPath: String, title: String) {
         this.modelFileName = glbAssetPath
         this.tvModelTitle.text = title
@@ -196,9 +190,7 @@ class ModelContainerView @JvmOverloads constructor(
         }
     }
 
-    /**
-     * Clamps the container's translation to ensure the entire rectangle remains within parent canvas bounds.
-     */
+
     fun clampToBounds() {
         val parentView = parent as? View ?: return
         val parentW = parentView.width
@@ -449,9 +441,6 @@ class ModelContainerView @JvmOverloads constructor(
         model3DRenderer?.pauseRendering()
     }
 
-    /**
-     * Cleanly destroys model-specific Filament rendering resources.
-     */
     fun destroy() {
         model3DRenderer?.destroy()
         model3DRenderer = null

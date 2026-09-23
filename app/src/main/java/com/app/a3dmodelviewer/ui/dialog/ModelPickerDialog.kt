@@ -8,18 +8,13 @@ import android.text.style.RelativeSizeSpan
 import android.text.style.StyleSpan
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
-/**
- * Model description representing a bundled 3D GLB asset.
- */
+
 data class ModelItem(
     val fileName: String,
     val displayName: String,
     val description: String
 )
 
-/**
- * Dialog for selecting and adding one of the 5 bundled GLB models to the canvas.
- */
 object ModelPickerDialog {
 
     val BUNDLED_MODELS = listOf(

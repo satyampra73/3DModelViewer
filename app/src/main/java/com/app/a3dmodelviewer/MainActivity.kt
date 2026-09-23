@@ -15,9 +15,6 @@ import com.app.a3dmodelviewer.ui.dialog.ModelItem
 import com.app.a3dmodelviewer.ui.dialog.ModelPickerDialog
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 
-/**
- * Single Activity hosting the multi-model canvas.
- */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var modelsCanvas: FrameLayout
@@ -67,9 +64,6 @@ class MainActivity : AppCompatActivity() {
         updateUiState()
     }
 
-    /**
-     * Instantiates an independent ModelContainerView for the selected GLB model.
-     */
     fun addModelContainer(modelItem: ModelItem): ModelContainerView {
         val density = resources.displayMetrics.density
         val initialSizePx = (240 * density).toInt()

@@ -7,12 +7,6 @@ import com.google.android.filament.gltfio.Gltfio
 import com.google.android.filament.gltfio.UbershaderProvider
 import com.google.android.filament.utils.Utils
 
-/**
- * Singleton managing the lifecycle of the shared Filament [Engine] and [UbershaderProvider].
- *
- * Enforces the architectural rule: only ONE Engine instance exists across the entire app,
- * preventing duplicated native graphics contexts, threads, and material caches.
- */
 object FilamentManager {
 
     private var isInitialized = false

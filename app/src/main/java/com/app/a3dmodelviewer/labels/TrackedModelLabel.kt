@@ -1,15 +1,5 @@
 package com.app.a3dmodelviewer.labels
 
-/**
- * Runtime tracked label attached to a specific 3D model entity.
- *
- * Holds pre-allocated buffers for zero-allocation per-frame transform updates.
- *
- * @property entity Filament entity ID.
- * @property nodeName glTF node name (e.g. "Empty.004").
- * @property labelText Label badge text (from `extras.prop`).
- * @property localTranslation Optional local translation offset.
- */
 class TrackedModelLabel(
     val entity: Int,
     val nodeName: String,
@@ -26,9 +16,6 @@ class TrackedModelLabel(
     val worldPosition = FloatArray(3)
     val screenPosBuffer = FloatArray(2)
 
-    /**
-     * Updates the world position by querying the entity's transform from [com.google.android.filament.TransformManager].
-     */
     fun updateWorldPosition(transformManager: com.google.android.filament.TransformManager) {
         val instance = transformManager.getInstance(entity)
         if (instance != 0) {

@@ -5,28 +5,18 @@ import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-/**
- * High-performance parser for glTF 2.0 Binary (.glb) metadata.
- *
- * Reads Chunk 0 (JSON) of the GLB container and discovers all nodes containing
- * `extras.prop` labels with their node names and positions.
- */
+
 object GlbMetadataParser {
 
     private const val GLB_MAGIC = 0x46546C67 // "glTF" in ASCII little-endian
     private const val CHUNK_TYPE_JSON = 0x4E4F534A // "JSON" in ASCII little-endian
 
-    /**
-     * Parses the GLB stream and extracts all labeled nodes.
-     */
+
     fun parse(inputStream: InputStream): List<GlbNodeMetadata> {
         val bytes = inputStream.readBytes()
         return parse(bytes)
     }
 
-    /**
-     * Parses the GLB byte array and extracts all labeled nodes.
-     */
     fun parse(bytes: ByteArray): List<GlbNodeMetadata> {
         if (bytes.size < 20) return emptyList()
 
@@ -54,9 +44,7 @@ object GlbMetadataParser {
         return parseJson(jsonString)
     }
 
-    /**
-     * Parses the glTF JSON chunk string to find nodes with extras.prop.
-     */
+
     fun parseJson(jsonString: String): List<GlbNodeMetadata> {
         val result = mutableListOf<GlbNodeMetadata>()
         val root = JSONObject(jsonString)
