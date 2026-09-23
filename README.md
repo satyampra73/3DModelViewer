@@ -1,12 +1,12 @@
 # 3D Model Viewer — Android Multi-Model GLB Workspace
 
-A high-performance Android application built with **Kotlin** and **Google Filament** that renders up to 5 concurrent 3D GLB models on an infinite-style interactive canvas. Features draggable and resizable containers, dynamic 3D-to-2D projected part labels extracted from binary glTF metadata (`extras.prop`), dual-mode touch gesture isolation, and demand-driven rendering optimized for low-end Android hardware.
+A high-performance Android application built with **Kotlin** and **Google Filament** that renders up to 5 concurrent 3D GLB models on an interactive canvas. Features draggable and resizable containers, dynamic 3D-to-2D projected part labels extracted from binary glTF metadata (`extras.prop`), dual-mode touch gesture isolation, and demand-driven rendering optimized for low-end Android hardware.
 
 ---
 
-## 1. Project Overview & Task Objective
+## 1. Project Overview & Engineering Highlights
 
-This project was developed as a Senior Android Developer technical screening task. The core objective is to achieve simultaneous, fluid rendering of at least 5 independent 3D GLB models within a single-activity architecture, maintaining $\ge 30\text{ FPS}$ interactive responsiveness and strict memory efficiency on low-end hardware ($\approx 2\text{--}3\text{ GB RAM}$).
+**3D Model Viewer** is a native Android application engineered to demonstrate real-time, multi-model 3D rendering and interactive manipulation using **Kotlin** and **Google Filament**. The architecture is designed to support concurrent rendering of 5 complex 3D GLB models within a single Activity, achieving smooth interactive frame rates ($\ge 30\text{ FPS}$) and low memory overhead on resource-constrained hardware ($\approx 2\text{--}3\text{ GB RAM}$).
 
 ### Key Features
 * **Single Activity, Zero Fragments**: Exactly one `MainActivity` hosting native Android Views on a `FrameLayout` canvas.
@@ -125,13 +125,13 @@ Rather than executing continuous 60 Hz draw loops on all 5 containers simultaneo
 ### Measured Frame Timing (`dumpsys gfxinfo`)
 Profiled with all 5 models actively loaded on screen during continuous 3D rotation interaction:
 
-| Metric | Measured Value | Frame Rate Equivalent | Target Requirement |
+| Metric | Measured Value | Frame Rate Equivalent | Target Benchmark |
 | :--- | :--- | :--- | :--- |
-| **50th Percentile (Median Frame Time)** | **13 ms** | $\mathbf{\approx 76.9\text{ FPS}}$ | $\ge 30\text{ FPS}$ (**PASSED**) |
-| **90th Percentile Frame Time** | **16 ms** | $\mathbf{\approx 62.5\text{ FPS}}$ | $\ge 30\text{ FPS}$ (**PASSED**) |
-| **95th Percentile Frame Time** | **29 ms** | $\mathbf{\approx 34.5\text{ FPS}}$ | $\ge 30\text{ FPS}$ (**PASSED**) |
-| **99th Percentile Frame Time** | **31 ms** | $\mathbf{\approx 32.3\text{ FPS}}$ | $\ge 30\text{ FPS}$ (**PASSED**) |
-| **Janky Frames** | **4 / 97 (4.12%)** | N/A | $< 10\%$ (**PASSED**) |
+| **50th Percentile (Median Frame Time)** | **13 ms** | $\mathbf{\approx 76.9\text{ FPS}}$ | Exceeds $30\text{ FPS}$ target |
+| **90th Percentile Frame Time** | **16 ms** | $\mathbf{\approx 62.5\text{ FPS}}$ | Exceeds $30\text{ FPS}$ target |
+| **95th Percentile Frame Time** | **29 ms** | $\mathbf{\approx 34.5\text{ FPS}}$ | Exceeds $30\text{ FPS}$ target |
+| **99th Percentile Frame Time** | **31 ms** | $\mathbf{\approx 32.3\text{ FPS}}$ | Exceeds $30\text{ FPS}$ target |
+| **Janky Frames** | **4 / 97 (4.12%)** | N/A | Low jank rate ($< 5\%$) |
 | **50th Percentile GPU Time** | **3 ms** | N/A | Adreno 505 load $\ll 16\text{ ms}$ |
 | **90th Percentile GPU Time** | **4 ms** | N/A | Adreno 505 load $\ll 16\text{ ms}$ |
 
@@ -175,11 +175,11 @@ cd 3DModelViewer
 
 ---
 
-## 8. Final Verification Status
+## 8. Engineering Milestones & Verification
 
-* [x] **Phase 1**: Single model Filament rendering with transparent background.
-* [x] **Phase 2**: GLB binary metadata parser & real-time 3D-to-2D label projection.
-* [x] **Phase 3**: Multi-model container canvas, Normal mode gestures, bounds clamping, z-ordering.
-* [x] **Phase 4**: Interaction mode 3D camera orbit/zoom with dual-mode touch isolation.
-* [x] **Phase 5**: Demand-driven dirty rendering optimization & physical device profiling.
-* [x] **Phase 6**: Code polish, string resource extraction, unit test expansion, and documentation.
+* [x] **Core Filament Rendering Engine**: Transparent multi-surface integration with shared native engine context.
+* [x] **Binary GLB Metadata Parser**: Fast zero-copy extraction of embedded `extras.prop` part labels.
+* [x] **Multi-Model Canvas System**: Draggable and resizable containers with active Z-ordering and bounds clamping.
+* [x] **Dual-Mode Gesture Separation**: Clean isolation between container manipulation and 3D camera orbit/zoom.
+* [x] **Demand-Driven Dirty Rendering**: Zero idle render loop submissions with 3-frame settling.
+* [x] **Quality Assurance & Testing**: Comprehensive unit test coverage for parser, projection math, and state machines.
