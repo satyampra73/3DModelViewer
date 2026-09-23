@@ -2,7 +2,7 @@
     <string name="app_name">3D Model Viewer</string>
     <string name="app_header_title">3D Model Viewer</string>
     <string name="empty_state_title">No 3D Models on Canvas</string>
-    <string name="empty_state_subtitle">Tap \'Add Model\' below to load up to 5 models simultaneously</string>
+    <string name="empty_state_subtitle">Tap \'Add Model\' below to load models simultaneously</string>
     <string name="btn_add_model">Add Model</string>
     <string name="model_count_active">%1$d Model%2$s Active</string>
     <string name="default_model_title">Model</string>

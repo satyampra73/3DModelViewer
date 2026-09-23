@@ -1,19 +1,22 @@
 # 3D Model Viewer — Android Multi-Model GLB Workspace
 
-A high-performance Android application built with **Kotlin** and **Google Filament** that renders up to 5 concurrent 3D GLB models on an interactive canvas. Features draggable and resizable containers, dynamic 3D-to-2D projected part labels extracted from binary glTF metadata (`extras.prop`), dual-mode touch gesture isolation, and demand-driven rendering optimized for low-end Android hardware.
+A high-performance Android application built with **Kotlin** and **Google Filament**. Supports simultaneous rendering of multiple independent GLB model instances, with performance profiled using 5 models concurrently on an interactive canvas. Features draggable and resizable containers, dynamic 3D-to-2D projected part labels extracted from binary glTF metadata (`extras.prop`), dual-mode touch gesture isolation, and demand-driven rendering optimized for resource-constrained Android hardware.
 
 ---
 
-## 1. Project Overview & Engineering Highlights
+## 1. Project Overview & 3D Library Choice
 
-**3D Model Viewer** is a native Android application engineered to demonstrate real-time, multi-model 3D rendering and interactive manipulation using **Kotlin** and **Google Filament**. The architecture is designed to support concurrent rendering of 5 complex 3D GLB models within a single Activity, achieving smooth interactive frame rates ($\ge 30\text{ FPS}$) and low memory overhead on resource-constrained hardware ($\approx 2\text{--}3\text{ GB RAM}$).
+**3D Model Viewer** demonstrates real-time, multi-model 3D rendering and interactive manipulation within a single Android Activity.
+
+### Why Google Filament?
+**Google Filament** (`com.google.android.filament`) was chosen for this project because of its lightweight real-time PBR rendering pipeline, official glTF/GLB support via `gltfio`, and low-level architectural flexibility. Crucially, Filament allows binding multiple isolated `Renderer`, `Scene`, `View`, `Camera`, and translucent `SwapChain` instances to a single shared native `Engine`, making it ideal for running multiple concurrent 3D viewports efficiently on memory-constrained mobile hardware.
 
 ### Key Features
 * **Single Activity, Zero Fragments**: Exactly one `MainActivity` hosting native Android Views on a `FrameLayout` canvas.
-* **Shared Filament Engine Architecture**: Exactly one `Engine` instance across all 5 models to minimize native graphics overhead and avoid duplicated contexts.
-* **5 Bundled GLB Models**: Pre-loaded assets covering mechanical, biological, and celestial domains.
+* **Shared Filament Engine**: Exactly one shared `Engine` instance across all active models to prevent duplicated native threads, shader pools, and context overhead.
+* **5 Bundled GLB Models**: Pre-loaded assets covering mechanical, biological, and celestial domains (`Bulb.glb`, `Fiagena.glb`, `Lungs.glb`, `Microscope.glb`, `solarsystem.glb`).
 * **Dynamic Binary GLB Metadata Parser**: Fast zero-copy parsing of glTF 2.0 chunk 0 (JSON) to discover nodes with `extras.prop` labels.
-* **Real-Time 3D-to-2D Label Projection**: Leader lines and text badges accurately track 3D model anchors across camera orbit, zoom, container drag, and container resize.
+* **Real-Time 3D-to-2D Label Projection**: Leader lines and text badges accurately track 3D model anchors across camera orbit, zoom, container drag, and resize.
 * **Strict Dual-Mode Gesture Separation**:
   * **Normal Mode**: 1-finger container dragging and 2-finger container pinch-resizing with canvas bounds clamping. 3D models remain immutable.
   * **Interaction Mode**: 1-finger 3D camera orbit and 2-finger 3D camera dolly zoom. Container size and position remain immutable.
@@ -26,7 +29,7 @@ A high-performance Android application built with **Kotlin** and **Google Filame
 
 ## 2. Bundled GLB Models
 
-All models reside in `app/src/main/assets/` and contain embedded `extras.prop` metadata:
+All 5 bundled models reside in `app/src/main/assets/` and contain embedded `extras.prop` metadata:
 
 | Model Asset | Display Name | Node Count / Domain | Key Labeled Parts (`extras.prop`) |
 | :--- | :--- | :--- | :--- |
@@ -110,20 +113,21 @@ Each container features a mode toggle button in its header bar:
 
 ## 6. Performance Optimization & Measured Profiling
 
-### Demand-Driven Dirty Rendering
-Rather than executing continuous 60 Hz draw loops on all 5 containers simultaneously, `Model3DRenderer` employs dirty-frame scheduling:
-* **Settling Counter**: `requestRender(frames = 3)` schedules 3 frames upon touch, resize, load, or toggle to ensure double/triple-buffered swapchains display the final frame accurately.
-* **Idle State**: Render loop sleeps at **0 idle render submissions/sec** when models are static.
+### Key Optimizations Applied
+* **Shared Engine**: One native engine singleton avoids redundant threads and shader cache duplication across models.
+* **Demand-Driven Dirty Rendering**: Replaced continuous 60 Hz loops with dirty-frame scheduling (`requestRender(frames = 3)`). Static models rest at **0 idle render submissions/sec**.
+* **Conditional Label Math**: Skipping matrix transformations when labels are hidden saves CPU cycles.
+* **Zero Per-Frame Allocations**: Reusable matrix and drawing buffers in `Model3DRenderer`, `ProjectionUtils`, and `LabelOverlayView` avoid runtime garbage collection.
 
 ### Test Device Specifications
-* **Device**: Samsung Galaxy M01s (`SM-M015G`)
+* **Device**: Samsung Galaxy M01 (`SM-M015G`)
 * **SoC / CPU**: Qualcomm Snapdragon 439 / 450 (`msm8937`, 8$\times$ Cortex-A53 @ 1.45 GHz)
 * **GPU**: Qualcomm Adreno 505
 * **RAM**: `2,911,608 kB` ($\approx \mathbf{2.77\text{ GB} \approx 3\text{ GB RAM}}$)
 * **OS**: Android 12 (API level 31)
 
 ### Measured Frame Timing (`dumpsys gfxinfo`)
-Profiled with all 5 models actively loaded on screen during continuous 3D rotation interaction:
+Profiled with 5 models actively loaded on screen during continuous 3D rotation interaction:
 
 | Metric | Measured Value | Frame Rate Equivalent | Target Benchmark |
 | :--- | :--- | :--- | :--- |
@@ -140,7 +144,7 @@ Profiled with all 5 models actively loaded on screen during continuous 3D rotati
   * **0 Models (Cold Startup)**: $94.4\text{ MB Total PSS}$ (Native: 31.1 MB, Java: 9.4 MB, Graphics: 9.7 MB)
   * **1 Model (`Bulb.glb`)**: $162.1\text{ MB Total PSS}$ (Native: 57.1 MB, Java: 20.8 MB, Graphics: 38.4 MB)
   * **3 Models**: $231.1\text{ MB Total PSS}$ (Native: 77.5 MB, Java: 31.6 MB, Graphics: 76.2 MB)
-  * **5 Models (All Active)**: $391.5\text{ MB Total PSS}$ (Native: 160.5 MB, Java: 32.5 MB, Graphics: 152.7 MB $\approx 14.1\%$ of device RAM)
+  * **5 Models (Active Concurrency)**: $391.5\text{ MB Total PSS}$ (Native: 160.5 MB, Java: 32.5 MB, Graphics: 152.7 MB $\approx 14.1\%$ of device RAM)
 * **3-Cycle Add $\to$ Close Stabilization**:
   * **Cycle 1**: 5 loaded ($393.5\text{ MB}$) $\to$ All closed: **140.09 MB**
   * **Cycle 2**: 5 loaded ($397.3\text{ MB}$) $\to$ All closed: **140.01 MB**
@@ -149,7 +153,33 @@ Profiled with all 5 models actively loaded on screen during continuous 3D rotati
 
 ---
 
-## 7. Build Configuration & Requirements
+## 7. Engineering Trade-offs
+
+* **Shared Engine vs. Isolated Engines**: Using a single shared `Engine` instance with per-container `Renderer`/`Scene`/`View` saves significant native memory and eliminates duplicate worker threads, at the cost of managing explicit per-view resource lifecycles.
+* **Camera Orbit vs. Model Transform Manipulation**: Orbiting the camera around the model bounding box keeps original glTF scene node transforms intact, ensuring straightforward world-to-screen label projection without introducing complex parent-child inverse kinematic matrix calculations.
+* **Native Android Views & `TextureView` vs. `SurfaceView`**: `TextureView` was selected over `SurfaceView` to enable alpha blending, translucent rendering, dynamic Z-ordering, and smooth container dragging/resizing within Android's view hierarchy, accepting the slight compositing overhead.
+* **Demand-Driven Settling Window**: Using a 3-frame settle on gesture completion ensures swapchain buffers receive the final visual state without requiring a continuously polling 60 Hz Choreographer loop.
+
+---
+
+## 8. Known Limitations
+
+* **Device Profiling Scope**: Performance and frame-timing benchmarks were gathered on a Samsung Galaxy M01; metrics may vary on different GPU architectures and OEM driver implementations.
+* **Label Layout**: The 2D label overlay clamps badges to container bounds but does not feature dynamic collision resolution when multiple labels cluster in dense areas.
+* **Tested Model Scale**: Profiling specifically evaluated 5 concurrent models; adding significantly more simultaneous instances will scale graphics driver swapchain memory accordingly.
+
+---
+
+## 9. Future Improvements
+
+* **Dynamic Label Collision Avoidance**: Implement force-directed placement or leader-line avoidance to prevent overlapping badges in dense viewing angles.
+* **Automated Gesture & UI Instrumentation**: Add comprehensive multi-touch instrumented tests covering pinch and drag gesture interactions.
+* **Model Geometry & Texture Caching**: Cache decoded binary GLB meshes to accelerate initial instantiation when loading duplicate models.
+* **Expanded Camera Controls**: Add two-finger pan/translation and customizable field-of-view controls.
+
+---
+
+## 10. Build Configuration & Requirements
 
 * **Minimum SDK**: `minSdk = 24` (Android 7.0 Nougat)
 * **Target SDK**: `targetSdk = 37`
@@ -172,14 +202,3 @@ cd 3DModelViewer
 # Install on connected device/emulator
 ./gradlew installDebug
 ```
-
----
-
-## 8. Engineering Milestones & Verification
-
-* [x] **Core Filament Rendering Engine**: Transparent multi-surface integration with shared native engine context.
-* [x] **Binary GLB Metadata Parser**: Fast zero-copy extraction of embedded `extras.prop` part labels.
-* [x] **Multi-Model Canvas System**: Draggable and resizable containers with active Z-ordering and bounds clamping.
-* [x] **Dual-Mode Gesture Separation**: Clean isolation between container manipulation and 3D camera orbit/zoom.
-* [x] **Demand-Driven Dirty Rendering**: Zero idle render loop submissions with 3-frame settling.
-* [x] **Quality Assurance & Testing**: Comprehensive unit test coverage for parser, projection math, and state machines.
