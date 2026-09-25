@@ -6,7 +6,6 @@ import android.view.Choreographer
 import android.view.Surface
 import android.view.TextureView
 import com.app.a3dmodelviewer.glb.GlbMetadataParser
-import com.app.a3dmodelviewer.labels.LabelOverlayView
 import com.app.a3dmodelviewer.labels.ProjectionUtils
 import com.app.a3dmodelviewer.labels.TrackedModelLabel
 import com.google.android.filament.Camera
@@ -29,8 +28,7 @@ import kotlin.math.sin
 
 class Model3DRenderer(
     private val context: Context,
-    private val textureView: TextureView,
-    private var labelOverlayView: LabelOverlayView? = null
+    private val textureView: TextureView
 ) : TextureView.SurfaceTextureListener {
 
     private val engine = FilamentManager.engine
@@ -141,9 +139,15 @@ class Model3DRenderer(
         }
     }
 
-    fun setLabelOverlayView(overlay: LabelOverlayView) {
-        this.labelOverlayView = overlay
-    }
+    var isLabelsVisible: Boolean = false
+        set(value) {
+            field = value
+            if (value) {
+                requestRender(DEFAULT_SETTLE_FRAMES)
+            }
+        }
+
+    var onLabelsUpdated: ((List<TrackedModelLabel>) -> Unit)? = null
 
     private fun setupLighting() {
         // Key Light: Direct illumination
@@ -293,8 +297,7 @@ class Model3DRenderer(
 
 
     private fun updateLabelsProjection() {
-        val overlay = labelOverlayView ?: return
-        if (!overlay.isLabelsVisible || trackedLabels.isEmpty() || surfaceWidth <= 0 || surfaceHeight <= 0) return
+        if (!isLabelsVisible || trackedLabels.isEmpty() || surfaceWidth <= 0 || surfaceHeight <= 0) return
 
         camera.getViewMatrix(viewMatrix)
         camera.getProjectionMatrix(projMatrix)
@@ -318,7 +321,7 @@ class Model3DRenderer(
             }
         }
 
-        overlay.updateLabels(trackedLabels)
+        onLabelsUpdated?.invoke(trackedLabels)
     }
 
     // --- TextureView.SurfaceTextureListener ---
@@ -392,7 +395,7 @@ class Model3DRenderer(
 
         pauseRendering()
         trackedLabels.clear()
-        labelOverlayView = null
+        onLabelsUpdated = null
 
         // 1. Destroy loaded GLB asset and loaders
         filamentAsset?.let { asset ->

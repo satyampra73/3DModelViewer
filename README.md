@@ -12,7 +12,8 @@ A high-performance Android application built with **Kotlin** and **Google Filame
 **Google Filament** (`com.google.android.filament`) was chosen for this project because of its lightweight real-time PBR rendering pipeline, official glTF/GLB support via `gltfio`, and low-level architectural flexibility. Crucially, Filament allows binding multiple isolated `Renderer`, `Scene`, `View`, `Camera`, and translucent `SwapChain` instances to a single shared native `Engine`, making it ideal for running multiple concurrent 3D viewports efficiently on memory-constrained mobile hardware.
 
 ### Key Features
-* **Single Activity, Zero Fragments**: Exactly one `MainActivity` hosting native Android Views on a `FrameLayout` canvas.
+* **100% Jetpack Compose UI**: Entire UI layer built declaratively with Jetpack Compose and Material 3, replacing legacy XML layouts and custom `ViewGroup`s.
+* **Zero-Recomposition Gesture Performance**: Container translation and sizing update layout/draw phases directly via lambda modifiers (`Modifier.offset { ... }`), completely preventing recomposition of Filament `TextureView` viewports during touch gestures.
 * **Shared Filament Engine**: Exactly one shared `Engine` instance across all active models to prevent duplicated native threads, shader pools, and context overhead.
 * **5 Bundled GLB Models**: Pre-loaded assets covering mechanical, biological, and celestial domains (`Bulb.glb`, `Fiagena.glb`, `Lungs.glb`, `Microscope.glb`, `solarsystem.glb`).
 * **Dynamic Binary GLB Metadata Parser**: Fast zero-copy parsing of glTF 2.0 chunk 0 (JSON) to discover nodes with `extras.prop` labels.
@@ -20,8 +21,8 @@ A high-performance Android application built with **Kotlin** and **Google Filame
 * **Strict Dual-Mode Gesture Separation**:
   * **Normal Mode**: 1-finger container dragging and 2-finger container pinch-resizing with canvas bounds clamping. 3D models remain immutable.
   * **Interaction Mode**: 1-finger 3D camera orbit and 2-finger 3D camera dolly zoom. Container size and position remain immutable.
-* **Multi-Touch Re-Anchoring**: Zero-jump transitions on `ACTION_POINTER_DOWN` and `ACTION_POINTER_UP`.
-* **Active Container Z-Ordering**: Touching any container brings it to the top (`translationZ` elevation + `bringToFront()`).
+* **Multi-Touch Re-Anchoring**: Zero-jump transitions on pointer down and pointer up events in Compose `pointerInput`.
+* **Active Container Z-Ordering**: Touching any container brings it to the top via Compose `zIndex` elevation.
 * **Demand-Driven Dirty Rendering**: Render loop rests at **0 idle render submissions/sec** when models are static, waking only for active motion or UI events with 3-frame settling.
 * **Resource Stabilization**: Clean deallocation of all Filament entities, swapchains, renderers, and scenes upon model close.
 
@@ -45,23 +46,30 @@ All 5 bundled models reside in `app/src/main/assets/` and contain embedded `extr
 
 ```
 com.app.a3dmodelviewer
-├── MainActivity.kt                  # Single Activity host & model container manager
+├── MainActivity.kt                      # Single ComponentActivity hosting Compose root
 ├── engine
-│   ├── FilamentManager.kt           # Shared Engine & UbershaderProvider singleton
-│   └── Model3DRenderer.kt           # Per-model Filament Renderer, Camera, Scene & SwapChain
+│   ├── FilamentManager.kt               # Shared Engine & UbershaderProvider singleton
+│   └── Model3DRenderer.kt               # Per-model Filament Renderer, Camera, Scene & SwapChain
 ├── glb
-│   ├── GlbMetadataParser.kt         # Binary GLB header & JSON chunk parser
-│   └── GlbNodeMetadata.kt           # Parsed node index, name, label, and local translation
+│   ├── GlbMetadataParser.kt             # Binary GLB header & JSON chunk parser
+│   └── GlbNodeMetadata.kt               # Parsed node index, name, label, and local translation
 ├── labels
-│   ├── ProjectionUtils.kt           # 3D world-to-2D screen projection & frustum culling
-│   ├── TrackedModelLabel.kt         # Pre-allocated entity tracking data structure
-│   └── LabelOverlayView.kt          # Zero-allocation 2D Canvas overlay (badges & lines)
+│   ├── ProjectionUtils.kt               # 3D world-to-2D screen projection & frustum culling
+│   ├── TrackedModelLabel.kt             # Pre-allocated entity tracking data structure
+│   └── LabelOverlayCanvas.kt            # Zero-allocation Compose Canvas overlay (badges & lines)
 └── ui
     ├── container
-    │   ├── InteractionMode.kt       # NORMAL vs INTERACTION enum
-    │   └── ModelContainerView.kt    # Draggable/resizable card container with gesture routing
-    └── dialog
-        └── ModelPickerDialog.kt     # Material dialog for selecting bundled GLB assets
+    │   ├── InteractionMode.kt           # NORMAL vs INTERACTION enum
+    │   └── ModelContainerCard.kt        # Compose Card with header controls & gesture routing
+    ├── dialog
+    │   └── ModelPickerDialog.kt         # Material 3 AlertDialog for selecting GLB assets
+    ├── screen
+    │   └── ModelViewerScreen.kt         # Declarative multi-model canvas, top bar, & FAB
+    ├── state
+    │   └── ModelItemState.kt            # Observable container state holder (bounds, mode, zIndex)
+    └── theme
+        ├── Color.kt                     # Material 3 color definitions
+        └── Theme.kt                     # Dark theme configuration for 3D workspace
 ```
 
 ### Shared Filament Engine Lifecycle
@@ -72,7 +80,7 @@ Creating multiple `Engine` instances in Filament duplicates native background wo
   * 1 `Scene`
   * 1 `View` (configured for `BlendMode.TRANSLUCENT` with clear color `(0,0,0,0)`)
   * 1 `Camera` (spherical orbit framing around model bounding box)
-  * 1 `SwapChain` (bound to the container's `TextureView`)
+  * 1 `SwapChain` (bound to the container's `TextureView` via `AndroidView`)
 * **Clean Deallocation**: When a model is closed, its `Model3DRenderer.destroy()` releases the scene entities, asset, loaders, camera, view, scene, swapchain, surface, and renderer back to the shared engine.
 
 ---
@@ -84,12 +92,12 @@ Creating multiple `Engine` instances in Filament duplicates native background wo
 2. Extracts Chunk 0 (`0x4E4F534A` / `JSON`) bytes without external heavy libraries.
 3. Parses the `nodes` array for `extras.prop` strings and extracts `name` and local `translation` offsets.
 
-### Projection Pipeline (`ProjectionUtils.kt` & `LabelOverlayView.kt`)
+### Projection Pipeline (`ProjectionUtils.kt` & `LabelOverlayCanvas.kt`)
 1. **World Position Query**: Queries node world transform matrix from Filament's `TransformManager`.
 2. **Matrix Projection**: Multiplies $P_{\text{world}} \to P_{\text{view}}$ ($4\times 4$ view matrix) $\to P_{\text{clip}}$ ($4\times 4$ projection matrix).
 3. **Frustum & Near-Plane Culling**: Culls points behind the camera eye ($c_w \le 0.0001$), outside NDC depth ($[-1.05, 1.05]$), or outside viewport margins.
-4. **Screen Mapping**: Converts NDC $[-1, 1]$ to Android View pixel coordinates with $Y$-axis inversion.
-5. **Zero-Allocation 2D Overlay**: `LabelOverlayView` draws leader lines, anchor rings, and rounded badge rectangles using pre-allocated `Paint`, `Rect`, and `RectF` buffers.
+4. **Screen Mapping**: Converts NDC $[-1, 1]$ to Compose Canvas pixel coordinates with $Y$-axis inversion.
+5. **Zero-Allocation 2D Overlay**: `LabelOverlayCanvas` draws leader lines, anchor rings, and rounded badge rectangles using pre-allocated `Paint`, `Rect`, and `RectF` buffers directly onto Compose `Canvas`.
 6. **Conditional Execution**: When labels are toggled OFF, matrix math and projections are completely skipped.
 
 ---
@@ -99,7 +107,7 @@ Creating multiple `Engine` instances in Filament duplicates native background wo
 Each container features a mode toggle button in its header bar:
 
 ### Normal Mode (Blue Header / Border)
-* **1-Finger Drag**: Moves the container across the canvas. Re-anchors pointer coordinates on `ACTION_POINTER_DOWN` and `ACTION_POINTER_UP` to prevent jumping.
+* **1-Finger Drag**: Moves the container across the canvas. Re-anchors pointer coordinates on pointer down and pointer up to prevent jumping.
 * **2-Finger Pinch**: Resizes the container (`minSizePx = 150dp`, `maxAllowed = 95% canvas`).
 * **Bounds Clamping**: Constrains container translation within the visible canvas during drag and resize, ensuring all 3 header controls (Mode Toggle, Label Toggle, Close) remain accessible.
 * **3D Content**: 3D camera remains completely static.
@@ -115,9 +123,10 @@ Each container features a mode toggle button in its header bar:
 
 ### Key Optimizations Applied
 * **Shared Engine**: One native engine singleton avoids redundant threads and shader cache duplication across models.
+* **Zero-Recomposition Gestures**: Drag and resize gestures use `Modifier.offset { ... }` lambda modifiers, bypassing Compose recomposition cycles entirely during active movement.
 * **Demand-Driven Dirty Rendering**: Replaced continuous 60 Hz loops with dirty-frame scheduling (`requestRender(frames = 3)`). Static models rest at **0 idle render submissions/sec**.
 * **Conditional Label Math**: Skipping matrix transformations when labels are hidden saves CPU cycles.
-* **Zero Per-Frame Allocations**: Reusable matrix and drawing buffers in `Model3DRenderer`, `ProjectionUtils`, and `LabelOverlayView` avoid runtime garbage collection.
+* **Zero Per-Frame Allocations**: Reusable matrix and drawing buffers in `Model3DRenderer`, `ProjectionUtils`, and `LabelOverlayCanvas` avoid runtime garbage collection.
 
 ### Test Device Specifications
 * **Device**: Samsung Galaxy M01 (`SM-M015G`)
@@ -157,7 +166,7 @@ Profiled with 5 models actively loaded on screen during continuous 3D rotation i
 
 * **Shared Engine vs. Isolated Engines**: Using a single shared `Engine` instance with per-container `Renderer`/`Scene`/`View` saves significant native memory and eliminates duplicate worker threads, at the cost of managing explicit per-view resource lifecycles.
 * **Camera Orbit vs. Model Transform Manipulation**: Orbiting the camera around the model bounding box keeps original glTF scene node transforms intact, ensuring straightforward world-to-screen label projection without introducing complex parent-child inverse kinematic matrix calculations.
-* **Native Android Views & `TextureView` vs. `SurfaceView`**: `TextureView` was selected over `SurfaceView` to enable alpha blending, translucent rendering, dynamic Z-ordering, and smooth container dragging/resizing within Android's view hierarchy, accepting the slight compositing overhead.
+* **Compose `AndroidView` wrapping `TextureView` vs. `SurfaceView`**: `TextureView` via `AndroidView` was selected over `SurfaceView` to enable alpha blending, translucent rendering, dynamic Compose `zIndex` ordering, and seamless clipping/elevation inside Compose Material 3 Cards.
 * **Demand-Driven Settling Window**: Using a 3-frame settle on gesture completion ensures swapchain buffers receive the final visual state without requiring a continuously polling 60 Hz Choreographer loop.
 
 ---
