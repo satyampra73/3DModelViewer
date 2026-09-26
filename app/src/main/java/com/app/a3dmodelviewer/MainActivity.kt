@@ -1,11 +1,16 @@
 package com.app.a3dmodelviewer
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.provider.OpenableColumns
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -13,6 +18,7 @@ import com.app.a3dmodelviewer.engine.FilamentManager
 import com.app.a3dmodelviewer.ui.container.ModelContainerView
 import com.app.a3dmodelviewer.ui.dialog.ModelItem
 import com.app.a3dmodelviewer.ui.dialog.ModelPickerDialog
+import com.app.a3dmodelviewer.ui.dialog.ModelSource
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 
 class MainActivity : AppCompatActivity() {
@@ -24,6 +30,14 @@ class MainActivity : AppCompatActivity() {
 
     private val activeContainers = mutableListOf<ModelContainerView>()
     private var modelPlacementCounter = 0
+
+    private val pickModelLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            handleSelectedModelUri(uri)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,9 +70,15 @@ class MainActivity : AppCompatActivity() {
         btnAddModel = findViewById(R.id.btnAddModel)
 
         btnAddModel.setOnClickListener {
-            ModelPickerDialog.show(this) { selectedModel ->
-                addModelContainer(selectedModel)
-            }
+            ModelPickerDialog.show(
+                context = this,
+                onPickFromDevice = {
+                    pickModelLauncher.launch(arrayOf("*/*"))
+                },
+                onModelSelected = { selectedModel ->
+                    addModelContainer(selectedModel)
+                }
+            )
         }
 
         updateUiState()
@@ -95,7 +115,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             // Load the chosen GLB model
-            loadModel(modelItem.fileName, modelItem.displayName)
+            loadModel(modelItem)
         }
 
         activeContainers.add(container)
@@ -103,6 +123,74 @@ class MainActivity : AppCompatActivity() {
         updateUiState()
 
         return container
+    }
+
+    private fun handleSelectedModelUri(uri: Uri) {
+        try {
+            contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+        } catch (_: SecurityException) {
+            // Not all document providers grant persistable permissions
+        }
+
+        if (!isValidGlbHeader(uri)) {
+            Toast.makeText(this, getString(R.string.error_invalid_glb), Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val fileName = getFileNameFromUri(uri)
+        val displayName = if (fileName.contains('.')) {
+            fileName.substringBeforeLast('.')
+        } else {
+            fileName
+        }.ifBlank { getString(R.string.default_model_title) }
+
+        val modelItem = ModelItem(
+            fileName = fileName,
+            displayName = displayName,
+            description = getString(R.string.custom_model_description),
+            source = ModelSource.UriSource(uri)
+        )
+        addModelContainer(modelItem)
+    }
+
+    private fun isValidGlbHeader(uri: Uri): Boolean {
+        return try {
+            contentResolver.openInputStream(uri)?.use { stream ->
+                val header = ByteArray(4)
+                val read = stream.read(header)
+                read == 4 &&
+                    header[0] == 'g'.code.toByte() &&
+                    header[1] == 'l'.code.toByte() &&
+                    header[2] == 'T'.code.toByte() &&
+                    header[3] == 'F'.code.toByte()
+            } ?: false
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun getFileNameFromUri(uri: Uri): String {
+        var name = "model.glb"
+        try {
+            contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (nameIndex != -1 && cursor.moveToFirst()) {
+                    val displayName = cursor.getString(nameIndex)
+                    if (!displayName.isNullOrBlank()) {
+                        name = displayName
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            uri.lastPathSegment?.let { segment ->
+                val clean = segment.substringAfterLast('/')
+                if (clean.isNotBlank()) name = clean
+            }
+        }
+        return name
     }
 
     private fun updateUiState() {

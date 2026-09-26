@@ -37,6 +37,7 @@ object FilamentManager {
     fun destroy() {
         if (!isInitialized) return
 
+        
         _materialProvider?.destroy()
         _materialProvider = null
 

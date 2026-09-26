@@ -2,6 +2,8 @@ package com.app.a3dmodelviewer.engine
 
 import android.content.Context
 import android.graphics.SurfaceTexture
+import android.net.Uri
+import android.util.Log
 import android.view.Choreographer
 import android.view.Surface
 import android.view.TextureView
@@ -178,13 +180,34 @@ class Model3DRenderer(
     }
 
     fun loadGlbFromAssets(assetPath: String) {
+        try {
+            val bytes = context.assets.open(assetPath).use { it.readBytes() }
+            loadGlbFromBytes(bytes)
+        } catch (e: Exception) {
+            Log.e("Model3DRenderer", "Failed to load asset: $assetPath", e)
+        }
+    }
+
+    fun loadGlbFromUri(uri: Uri) {
+        try {
+            val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            if (bytes != null && bytes.isNotEmpty()) {
+                loadGlbFromBytes(bytes)
+            } else {
+                Log.e("Model3DRenderer", "Failed to read bytes from uri: $uri")
+            }
+        } catch (e: Exception) {
+            Log.e("Model3DRenderer", "Failed to load GLB from Uri: $uri", e)
+        }
+    }
+
+    fun loadGlbFromBytes(bytes: ByteArray) {
         if (isDestroyed) return
 
         val loader = assetLoader ?: return
         val resLoader = resourceLoader ?: return
 
-        // 1. Read GLB bytes from assets
-        val bytes = context.assets.open(assetPath).use { it.readBytes() }
+        // 1. Allocate buffer and copy bytes
         val buffer = ByteBuffer.allocateDirect(bytes.size).apply {
             order(ByteOrder.nativeOrder())
             put(bytes)
@@ -192,10 +215,18 @@ class Model3DRenderer(
         }
 
         // 2. Parse glTF metadata for extras.prop labels
-        val metadataList = GlbMetadataParser.parse(bytes)
+        val metadataList = try {
+            GlbMetadataParser.parse(bytes)
+        } catch (e: Exception) {
+            Log.w("Model3DRenderer", "Failed to parse glb metadata", e)
+            emptyList()
+        }
 
         // 3. Create asset and load GPU resources
-        val asset = loader.createAsset(buffer) ?: return
+        val asset = loader.createAsset(buffer) ?: run {
+            Log.e("Model3DRenderer", "AssetLoader.createAsset returned null. Invalid GLB data.")
+            return
+        }
         resLoader.loadResources(asset)
         asset.releaseSourceData()
 

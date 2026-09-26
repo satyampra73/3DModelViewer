@@ -10,4 +10,8 @@
     <string name="mode_interact">Interact</string>
     <string name="dialog_add_model_title">Add 3D Model</string>
     <string name="btn_cancel">Cancel</string>
+    <string name="choose_from_device">Choose from Device Storage</string>
+    <string name="choose_from_device_sub">Select any .glb 3D model from your files</string>
+    <string name="error_invalid_glb">Please select a valid .glb 3D model file.</string>
+    <string name="custom_model_description">Custom model from device storage</string>
 </resources>

@@ -15,6 +15,8 @@ import androidx.core.content.ContextCompat
 import com.app.a3dmodelviewer.R
 import com.app.a3dmodelviewer.engine.Model3DRenderer
 import com.app.a3dmodelviewer.labels.LabelOverlayView
+import com.app.a3dmodelviewer.ui.dialog.ModelItem
+import com.app.a3dmodelviewer.ui.dialog.ModelSource
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import kotlin.math.hypot
@@ -181,13 +183,27 @@ class ModelContainerView @JvmOverloads constructor(
     }
 
 
-    fun loadModel(glbAssetPath: String, title: String) {
-        this.modelFileName = glbAssetPath
-        this.tvModelTitle.text = title
+    fun loadModel(modelItem: ModelItem) {
+        this.modelFileName = modelItem.fileName
+        this.tvModelTitle.text = modelItem.displayName
 
         model3DRenderer = Model3DRenderer(context, textureView, labelOverlayView).apply {
-            loadGlbFromAssets(glbAssetPath)
+            when (val source = modelItem.source) {
+                is ModelSource.Asset -> loadGlbFromAssets(source.assetPath)
+                is ModelSource.UriSource -> loadGlbFromUri(source.uri)
+            }
         }
+    }
+
+    fun loadModel(glbAssetPath: String, title: String) {
+        loadModel(
+            ModelItem(
+                fileName = glbAssetPath,
+                displayName = title,
+                description = "",
+                source = ModelSource.Asset(glbAssetPath)
+            )
+        )
     }
 
 
